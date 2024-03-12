@@ -40,7 +40,7 @@ def handle(res1, res2):
     nhietdo = res1
     doam = res2
 
-
+#I'm Xuan Truong Commit
 time = Timer(0)
 time.init(period=1000, callback=lambda t: handle(*(call_back(t))))
 sleep(1)
