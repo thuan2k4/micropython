@@ -1,6 +1,3 @@
-from umqttsimple import MQTTClient
-import machine
-import ubinascii
 try:
     import usocket as socket
 except KeyboardInterrupt:
@@ -15,12 +12,10 @@ import gc
 
 gc.collect()
 
-ssid = 'LAB DOANH NGHIEP'
-password = 'E202DHKH'
-mqtt_server = '10.10.84.116'
+ssid = ''
+password = ''
 
-client_id = ubinascii.hexlify(machine.unique_id())
-sta = network.WLAN(network.STA_IF)
+
 sta.active(True)
 sta.connect(ssid, password)
 
