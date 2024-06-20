@@ -1,8 +1,3 @@
-import asyncio
-import random
-import time
-from umqttsimple import MQTTClient
-from boot import *
 from machine import Pin, Timer, PWM
 from time import sleep
 import dht
@@ -12,46 +7,180 @@ led = Pin(2, Pin.OUT, value=0)
 led2 = Pin(5, Pin.OUT, value=1)
 led3 = Pin(15, Pin.OUT, value=1)
 
-# Nút ở chân sạc
-button_main = Pin(0, Pin.IN)
-
-
-def handle_interrupt():
-    led.value(not led.value())
-
-
-button_main.irq(trigger=3, handler=handle_interrupt)
-
 # Đọc cảm ứng DHT11
 sensor = dht.DHT11(Pin(16))
-sensor.measure()
-nhietdo = ''
-doam = ''
+def read_dht11():
+    sensor.measure()
+    temperature = sensor.temperature()
+    humidity = sensor.humidity()
+    return temperature, humidity
+
+def web_page():
+    html_flie = """
+  <html>
+  <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1", charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+  <style>
+    body{
+      background: linear-gradient(to left, grey, rgba(128, 128, 128, 0));
+      font-family: Roboto;
+      height: 900px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      row-gap: 5px;
+    }
+    .tittle{
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+    }
+    .button-section{
+      display: flex;
+      flex-direction: column;
+      row-gap: 20px;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .container{
+      width: 300px;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+      border: 2px solid grey;
+      display: flex;
+      flex-direction: column;
+      padding: 25px;
+      border-radius: 5px;
+      row-gap: 20px;
+    }
+    .led_main,.ledD0,.ledD1,.Traffic{
+      display: flex;
+      column-gap: 10px;
+    }
+    .led-button,.ledD0-button,.ledD1-button,.led-traffic-button{
+      display: flex;
+      flex: 1;
+      column-gap: 10px;
+      justify-content: end;
+    }
+    .stats{
+      flex: 1;
+      display: flex;
+      justify-content: end;
+    }
+    .weather-forecast{
+      display: flex;
+      flex-direction: column;
+      width: 300px;
+      border: 2px solid grey;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+      padding: 25px;
+      border-radius: 5px;
+      row-gap: 15px;
+    }
+    .Tittle{
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+    }
+    .Stats{
+      display: flex;
+      flex-direction: column;
+      row-gap: 18px;
+    }
+    .nhiet_do,.do_am{
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+   <script>
+        function fetchData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('temperature').innerText = "Nhiệt độ hiện tại là: " + data.temperature + "°C";
+                    document.getElementById('humidity').innerText = "Độ ẩm hiện tại là: " +  data.humidity + "%";
+                })
+                .catch(err => {
+                    console.error('Error fetching data:', err);
+                    document.getElementById('data').innerText = 'Error fetching data';
+                });
+        }
+        setInterval(fetchData, 10000); // Lặp lại việc đo sensor sau mỗi 10s
+        window.onload = fetchData;
+    </script>
+</head>
+<body>
+  <div class="container">
+    <div class="tittle">
+      Demo ESP8266
+    </div>
+    <div class="button-section">
+      <div class="led_main">
+        <div class="stats">Led_Main:</div>
+        <div class="led-button">
+          <a href=\"?led_main=on\"><button>ON</button></a>
+          <a href=\"?led_main=off\"><button>OFF</button></a>
+        </div>
+      </div>
+      <div class="ledD0">
+        <div class="stats">Led_D0:</div>
+        <div class="ledD0-button">
+          <a href=\"?led_D0=on\"><button>ON</button></a>
+          <a href=\"?led_D0=off\"><button>OFF</button></a>
+        </div>
+      </div>
+      <div class="ledD1">
+        <div class="stats">Led_D1:</div>
+        <div class="ledD1-button">
+          <a href=\"?led_D1=on\"><button>ON</button></a>
+          <a href=\"?led_D1=off\"><button>OFF</button></a>
+        </div>
+      </div>
+
+      <div class="Traffic">
+        <div class="stats">Mod Nháy Đèn: </div>
+        <div class="led-traffic-button">
+          <a href=\"?Mod_crazy=on\"><button>Alabatrap</button></a>
+          <a href=\"?Mod_crazy=off\"><button>OFF</button></a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="weather-forecast">
+
+    <div class="Tittle">
+      Cảm Biến Dự Báo Thời Tiết
+    </div>
+
+    <div id="data" class="Stats">
+      <div class="description">
+        <div id="temperature" class="nhiet_do">Loading Temperature.....</div>
+        <div id="humidity" class="do_am">Loading Humidity......</div>
+      </div>
+    </div>
+
+  </div>
+  
+  
+</body>
+</html>"""
+    return html_flie
 
 
-def call_back(timer):
-    tem = sensor.temperature()
-    tem2 = sensor.humidity()
-    return str(tem), str(tem2)
-
-
-def handle(res1, res2):
-    global nhietdo, doam
-    nhietdo = res1
-    doam = res2
-
-#I'm Xuan Truong Commit
-time = Timer(0)
-time.init(period=1000, callback=lambda t: handle(*(call_back(t))))
-sleep(1)
-
-# --------------------------------------------------------------
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
 s.listen(5)
 while True:
-    print("Nhiệt độ là:", str(nhietdo))
-    print("Độ Ẩm là:", str(doam))
+
     try:
         if gc.mem_free() < 102000:
             gc.collect()
@@ -106,11 +235,21 @@ while True:
             led2.value(0)
             led3.value(0)
 
-        response = web_page()
-        conn.send('HTTP/1.1 200 OK\n')
-        conn.send('Content-Type: text/html\n')
-        conn.send('Connection: close\n\n')
-        conn.sendall(response)
+
+        if "/data" in request:
+            temperature, humidity = read_dht11()
+            response = {'temperature' : temperature, 'humidity' : humidity} #tạo thêm 1 dic để đưa lên JSON nhằm thay đổi theo dic
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/html\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(str(response).replace("'", '"')) # Dùng để thay đổi file JSON nhằm update thông tin
+
+        else:
+            response = web_page()
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/html\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(response)
         conn.close()
 
     except OSError as e:
