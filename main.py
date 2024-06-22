@@ -9,11 +9,14 @@ led3 = Pin(15, Pin.OUT, value=1)
 
 # Đọc cảm ứng DHT11
 sensor = dht.DHT11(Pin(16))
+
+
 def read_dht11():
     sensor.measure()
     temperature = sensor.temperature()
     humidity = sensor.humidity()
     return temperature, humidity
+
 
 def web_page():
     html_flie = """
@@ -24,7 +27,7 @@ def web_page():
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
 
   <style>
     body{
@@ -102,19 +105,71 @@ def web_page():
     }
   </style>
    <script>
+        
+        var Temperature = []
+        var Humidity = []
+        var Dates = []
+        
         function fetchData() {
             fetch('/data')
                 .then(response => response.json())
                 .then(data => {
+                
+                    Temperature.push(data.temperature)
+                    Humidity.push(data.humidity)
+                    Dates.push(new Date().toLocaleTimeString())
+                    
                     document.getElementById('temperature').innerText = "Nhiệt độ hiện tại là: " + data.temperature + "°C";
                     document.getElementById('humidity').innerText = "Độ ẩm hiện tại là: " +  data.humidity + "%";
+    
                 })
                 .catch(err => {
                     console.error('Error fetching data:', err);
                     document.getElementById('data').innerText = 'Error fetching data';
                 });
         }
-        setInterval(fetchData, 10000); // Lặp lại việc đo sensor sau mỗi 10s
+
+        function updateChart(){
+
+            new Chart("myChart", {
+                type:'line',
+                data: {
+                    labels: Dates,
+                    datasets: [{
+                        label:"Nhiệt độ (%c)",
+                        fill:false,
+                        backgroundColor: "red",
+                        borderColor: "red",
+                        data: Temperature
+                    }, 
+                    
+                    {
+                        label:"Độ ẩm (%)",
+                        fill:false,
+                        backgroundColor: "black",
+                        borderColor: "black",
+                        data: Humidity
+                    }]
+                },
+                options:{
+                    title:{
+                        display:true,
+                        text: "Biểu đồ nhiệt độ và độ ẩm"
+                    },
+                    scales:{
+                        
+                        yAxes:[{ticks: {min:0,max:100}}]
+                    }
+                }
+            })
+        }
+        function runAll(){
+            fetchData()
+            updateChart()
+        }
+        setInterval(runAll, 10000); // Lặp lại việc đo sensor sau mỗi 10s
+        
+        
         window.onload = fetchData;
     </script>
 </head>
@@ -167,10 +222,11 @@ def web_page():
         <div id="humidity" class="do_am">Loading Humidity......</div>
       </div>
     </div>
-
+    
+    <canvas id="myChart" style="width: 120px; height: 120px;"></canvas>
   </div>
-  
-  
+    
+
 </body>
 </html>"""
     return html_flie
@@ -235,14 +291,14 @@ while True:
             led2.value(0)
             led3.value(0)
 
-
         if "/data" in request:
             temperature, humidity = read_dht11()
-            response = {'temperature' : temperature, 'humidity' : humidity} #tạo thêm 1 dic để đưa lên JSON nhằm thay đổi theo dic
+            response = {'temperature': temperature,
+                        'humidity': humidity}  # tạo thêm 1 dic để đưa lên JSON nhằm thay đổi theo dic
             conn.send('HTTP/1.1 200 OK\n')
             conn.send('Content-Type: text/html\n')
             conn.send('Connection: close\n\n')
-            conn.sendall(str(response).replace("'", '"')) # Dùng để thay đổi file JSON nhằm update thông tin
+            conn.sendall(str(response).replace("'", '"'))  # Dùng để thay đổi file JSON nhằm update thông tin
 
         else:
             response = web_page()
